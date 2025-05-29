@@ -1,9 +1,13 @@
 language: go
 
 go:
-  - 1.8.x
-  - master
+  - "1.22.x"
 
 install:
-  - go get -v github.com/Masterminds/glide 
-  - make get-deps
+  # Dependencies are managed by Go modules.
+  # Ensure your Makefile's get-deps or build targets handle 'go mod download' or similar if necessary.
+  # Or, 'go mod tidy' could be run here if not part of the make targets.
+
+script:
+  - make build
+  - make test

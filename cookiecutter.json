@@ -12,5 +12,21 @@
   "use_logrus_logging": "y",
   "use_viper_config": "y",
   "use_cobra_cmd": "y",
-  "use_ci": ["github", "travis", "circle", "none"]
+  "use_ci": ["github", "travis", "circle", "none"],
+  "_copy_without_render": [
+    "catalog-info.yaml",
+    "template.yaml",
+    ".travis.yml",
+    "README.md",
+    "AUTHORS.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "tox.ini",
+    "requirements.txt",
+    "hooks",
+    "tests",
+    ".github",
+    ".gitignore"
+  ]
 }

@@ -1,48 +1,67 @@
-version: 2
+version: 2.1 # Updated to a more recent version
 jobs:
   build:
-    working_directory: /app
+    working_directory: /app # Using /app as the working directory
     docker:
-      - image: docker:17.05.0-ce-git
+      - image: cimg/go:1.22 # Using a modern CircleCI Go image
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker # For Docker build capabilities
       - run:
           name: Install dependencies
           command: |
-            apk add --no-cache \
-              make
+            # 'make' is often pre-installed in cimg/go, but explicit install is fine.
+            # Other build dependencies could be added here if needed.
+            sudo apt-get update && sudo apt-get install -y make # cimg/go is Debian-based
       - restore_cache:
           keys:
-            - {% raw %}v1-{{ .Branch }}{% endraw %}
+            - {% raw %}v1-deps-{{ .Branch }}-{{ checksum "go.sum" }}{% endraw %} # More specific cache key
+            - {% raw %}v1-deps-{{ .Branch }}{% endraw %}
           paths:
-            - /caches/app.tar
+            - /caches/app.tar # Path for Docker image layer cache
       - run:
           name: Load Docker image layer cache
           command: |
+            # Ensure the cache directory exists
+            mkdir -p /caches
+            # Load cached Docker image layers. pipefail is off to prevent failure if file doesn't exist.
             set +o pipefail
             docker load -i /caches/app.tar | true
-      - run: |
-          docker login -u $DOCKER_USER -p $DOCKER_PASS
+            set -o pipefail
+      - run:
+          name: Login to Docker Hub (if necessary for pushing)
+          command: |
+            # This step might require CircleCI context or environment variables for $DOCKER_USER and $DOCKER_PASS
+            # For public images or local builds, login might not be strictly needed here.
+            # Consider using CircleCI contexts for secure credential storage.
+            if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASS" ]; then
+              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            else
+              echo "DOCKER_USER or DOCKER_PASS not set. Skipping Docker login."
+            fi
       - run:
           name: Build application Docker image
+          # This make target should handle 'docker build' using the updated Dockerfile (Go 1.22 based)
           command: |
             make package
       - run:
           name: Save Docker image layer cache
           command: |
             mkdir -p /caches
+            # Saves the built image (replace with actual image name if different)
             docker save -o /caches/app.tar {{cookiecutter.docker_hub_username}}/{{cookiecutter.component_id}}
       - save_cache:
-          key:  {% raw %}v1-{{ .Branch }}-{{ epoch }}{% endraw %}
+          key:  {% raw %}v1-app-{{ .Branch }}-{{ epoch }}{% endraw %} # More specific cache key for the app image
           paths:
             - /caches/app.tar
       - run:
           name: Run tests
           command: |
-            make test # docker-compose -f ./docker-compose.test.yml up
+            make test # This should ideally run tests using Go modules, potentially within Docker if needed.
       - run:
           name: Push application Docker image
+          # This make target should handle 'docker tag' and 'docker push'
+          # Ensure it pushes the correct image: {{cookiecutter.docker_hub_username}}/{{cookiecutter.component_id}}
           command: |
             make tag
             make push

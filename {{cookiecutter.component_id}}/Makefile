@@ -20,7 +20,6 @@ help:
 	@echo
 	@echo 'Usage:'
 	@echo '    make build           Compile the project.'
-	@echo '    make get-deps        runs dep ensure, mostly used for ci.'
 	{% if cookiecutter.use_docker == "y" %}@echo '    make build-alpine    Compile optimized for alpine linux.'
 	@echo '    make package         Build final docker image with just the go binary inside'
 	@echo '    make tag             Tag image created by package with latest, git commit and version'
@@ -31,16 +30,16 @@ help:
 
 build:
 	@echo "building ${BIN_NAME} ${VERSION}"
-	@echo "GOPATH=${GOPATH}"
-	go build -ldflags "-X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.BuildDate=${BUILD_DATE}" -o bin/${BIN_NAME}
+	@echo "GOPATH=${GOPATH}" # GOPATH is less relevant with Go Modules but harmless here.
+	go build -v -ldflags "-X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.BuildDate=${BUILD_DATE}" -o bin/${BIN_NAME}
 
-get-deps:
-	dep ensure
 {% if cookiecutter.use_docker == "y" %}
 build-alpine:
-	@echo "building ${BIN_NAME} ${VERSION}"
-	@echo "GOPATH=${GOPATH}"
-	go build -ldflags '-w -linkmode external -extldflags "-static" -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.BuildDate=${BUILD_DATE}' -o bin/${BIN_NAME}
+	@echo "building ${BIN_NAME} ${VERSION} for Alpine"
+	# CGO_ENABLED=0 is often important for static builds for Alpine, especially if not using an alpine base for build.
+	# However, golang:alpine builder image handles many cases. Keep ldflags for static linking.
+	# Adding -v for verbose output.
+	CGO_ENABLED=0 go build -v -ldflags '-w -linkmode external -extldflags "-static" -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.component_id}}/version.BuildDate=${BUILD_DATE}' -o bin/${BIN_NAME}
 
 package:
 	@echo "building image ${BIN_NAME} ${VERSION} $(GIT_COMMIT)"
@@ -59,8 +58,10 @@ push: tag
 	docker push $(IMAGE_NAME):latest
 {% endif %}
 clean:
-	@test ! -e bin/${BIN_NAME} || rm bin/${BIN_NAME}
+	@echo "cleaning up bin directory"
+	@rm -f bin/${BIN_NAME}
 
 test:
-	go test ./...
+	@echo "running tests"
+	go test -v -race ./... # Added -v and -race flags
 

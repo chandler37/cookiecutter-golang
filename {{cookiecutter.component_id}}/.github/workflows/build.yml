@@ -1,24 +1,29 @@
 name: Build and test Go
+
 on: [push, pull_request]
+
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.13
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.13
-
       - name: Check out source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4 # Updated to v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5 # Updated to v5
+        with:
+          go-version: '1.22' # Updated to Go 1.22
+          # Optional: enable caching of Go modules
+          cache: true 
+          # cache-dependency-path: '**/go.sum' # Or specific path to go.sum if not in root
 
       - name: Build
         env:
-          GOPROXY: "https://proxy.golang.org"
-        run: go build .
+          GOPROXY: "https://proxy.golang.org,direct" # Recommended GOPROXY setting
+        run: go build -v . # Added -v for verbose build output
 
       - name: Test
         env:
-          GOPROXY: "https://proxy.golang.org"
-        run: go test -v .
+          GOPROXY: "https://proxy.golang.org,direct" # Recommended GOPROXY setting
+        run: go test -v -race . # Added -race detector
